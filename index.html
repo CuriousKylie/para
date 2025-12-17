@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OSM with Leaflet</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    div {text-align: center;}
+    #map { height: 75vh; width: 100%; display: inline-block;}
+    #bruh {color: #8d0000; font-family: Arial, Helvetica, sans-serif;}
+    .pin {
+  width: 30px;
+  height: 30px;
+  background: red;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  position: relative;
+}
+
+.pin::after {
+  content: attr(data-number);
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 9px;
+  font-weight: bold;
+  color: black;
+}
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+  }
+
+  .highway-sign {
+    width: 120px;
+    height: 120px;
+    background: black;
+    border-radius: 20% 20% 30% 30%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+
+  .highway-sign::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 8px solid white;
+    border-radius: 20% 20% 30% 30%;
+    box-sizing: border-box;
+  }
+
+  .highway-number {
+    color: white;
+    font-size: 48px;
+    font-weight: bold;
+    z-index: 1;
+    font-family: Arial, sans-serif;
+  }
+
+  .custom-sign {
+    min-width: 200px; /* wider to accommodate longer text */
+    height: 100px;
+    background: #222;
+    border-radius: 25% 25% 35% 35%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 0 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+
+  .custom-sign::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 8px solid white;
+    border-radius: 25% 25% 35% 35%;
+    box-sizing: border-box;
+  }
+
+  .sign-text {
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+    z-index: 1;
+    font-family: Arial, sans-serif;
+    white-space: nowrap; /* prevent text from wrapping */
+  }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="bruh">whats up</div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    async function updateInfo(markers) {
+    let jeepCodes_match = [];
+    let noMatch = [];
+    let bruh = document.getElementById("bruh");
+
+    const themap_data = await fetch('./mapdata.json').then(r => r.json());
+
+    // Process markers ONE BY ONE, in order
+    for (const marker of markers) {
+        const { lat, lng } = marker.getLatLng();
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+
+        const data = await fetch(url).then(r => r.json());
+
+        if (!data.address || !data.address.road) continue;
+
+        const road = data.address.road.toLowerCase();
+
+        for (const num_route in themap_data) {
+            const roads = themap_data[num_route].roads;
+
+            if (roads.includes(road) && !noMatch.includes(num_route)) {
+                if (!jeepCodes_match.includes(num_route)) {
+                    jeepCodes_match.push(num_route);
+                }
+            } else if (
+                jeepCodes_match.includes(num_route) &&
+                !noMatch.includes(num_route)
+            ) {
+                noMatch.push(num_route);
+                jeepCodes_match.splice(
+                    jeepCodes_match.indexOf(num_route),
+                    1
+                );
+            }
+        }
+    }
+
+    // Runs only after ALL markers finish, in order
+    bruh.innerHTML = `<div style="font-weight: bold; font-size: 100%">Matches: </div>`;
+    for (const match of jeepCodes_match) {
+        bruh.innerHTML += `<div class="highway-sign"><div class="highway-number">${match}</div></div>`;
+    }
+
+    return jeepCodes_match;
+}
+
+
+
+
+    // Initialize map
+    const map = L.map('map').setView([10.338560, 123.911697], 19);
+
+    // OSM tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add a custom DOM element as a marker
+
+    let markers = []
+
+
+    // Detect clicks anywhere on the map
+    map.on('contextmenu', function(e) {
+      bruh.textContent = "Updating.."
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      const customDiv = L.divIcon({
+        className: 'custom-marker',
+        html: `<div class="pin" data-number=${markers.length}></div>`
+      });
+
+      let marker = L.marker([lat, lng], {icon: customDiv}).addTo(map);
+      markers.push(marker);
+
+      updateInfo(markers);
+    });
+
+    document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape") {
+
+        for (marker of markers) {
+          map.removeLayer(marker);
+        }
+
+        markers.length = 0;
+        // Do something here
+      }
+   });
+  </script>
+</body>
+</html>
