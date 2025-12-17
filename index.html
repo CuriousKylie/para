@@ -155,7 +155,7 @@ body {
     // Runs only after ALL markers finish, in order
     bruh.innerHTML = `<div style="font-weight: bold; font-size: 100%">Matches: </div>`;
     for (const match of jeepCodes_match) {
-        bruh.innerHTML += `<div class="highway-sign"><div class="highway-number">${match}</div></div>`;
+        bruh.innerHTML += `<div class="highway-sign"><a class="highway-number" href="https://ph.commutetour.com/ph/routes/cebu-routes/cebu-jeep/${match}/#map">${match}</a></div>`;
     }
 
     return jeepCodes_match;
